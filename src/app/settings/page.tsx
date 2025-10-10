@@ -19,15 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useSession } from "next-auth/react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Moon, Sun, Monitor } from "lucide-react";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "next-themes";
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
   const user = session?.user;
+  const { theme, setTheme } = useTheme();
 
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -67,7 +70,7 @@ export default function SettingsPage() {
         setEmail(userData.email || "");
         setTelefono(userData.telefono || "");
         setUbicacion(userData.ubicacion || "");
-        
+
         toast({
           title: "Datos actualizados",
           description: "Los datos del usuario se han cargado correctamente.",
@@ -209,12 +212,14 @@ export default function SettingsPage() {
       if (response.ok) {
         toast({
           title: "Preferencias actualizadas",
-          description: "Las preferencias de IA se han actualizado exitosamente.",
+          description:
+            "Las preferencias de IA se han actualizado exitosamente.",
         });
       } else {
         toast({
           title: "Error",
-          description: data.error || "Error al actualizar las preferencias de IA",
+          description:
+            data.error || "Error al actualizar las preferencias de IA",
           variant: "destructive",
         });
       }
@@ -248,11 +253,9 @@ export default function SettingsPage() {
   return (
     <div className="p-4">
       <Tabs defaultValue="account" className="w-full max-w-5xl mx-auto">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="account">Cuenta</TabsTrigger>
           <TabsTrigger value="ai">IA</TabsTrigger>
-          <TabsTrigger value="usage">Uso</TabsTrigger>
-          <TabsTrigger value="billing">Facturación</TabsTrigger>
           <TabsTrigger value="appearance">Apariencia</TabsTrigger>
         </TabsList>
         <TabsContent value="account">
@@ -431,52 +434,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="usage">
-          <Card>
-            <CardHeader>
-              <CardTitle>Uso y Estadísticas</CardTitle>
-              <CardDescription>
-                Revisa el uso de tu cuenta y las estadísticas de IA.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Llamadas a la API (últimos 30 días)</Label>
-                  <p className="text-2xl font-bold">1,234</p>
-                </div>
-                <div>
-                  <Label>Tokens Consumidos (últimos 30 días)</Label>
-                  <p className="text-2xl font-bold">567,890</p>
-                </div>
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <Label>Último Informe de IA Generado</Label>
-                <p className="text-lg">2023-10-27 10:30 AM</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="billing">
-          <Card>
-            <CardHeader>
-              <CardTitle>Facturación y Suscripción</CardTitle>
-              <CardDescription>
-                Gestiona tus planes de suscripción y detalles de facturación.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Esta sección está en desarrollo. Pronto podrás gestionar tus
-                suscripciones aquí.
-              </p>
-              <Button className="w-full" disabled>
-                Ver Planes
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
         <TabsContent value="appearance">
           <Card>
             <CardHeader>
@@ -485,14 +442,65 @@ export default function SettingsPage() {
                 Personaliza la apariencia de tu dashboard.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Esta sección está en desarrollo. Pronto podrás cambiar temas y
-                configuraciones visuales.
-              </p>
-              <Button className="w-full" disabled>
-                Guardar Preferencias
-              </Button>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Modo Oscuro</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Cambia entre modo claro y oscuro
+                    </p>
+                  </div>
+                  <Switch
+                    checked={theme === "dark"}
+                    onCheckedChange={(checked) =>
+                      setTheme(checked ? "dark" : "light")
+                    }
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <Label className="text-base">Tema del Sistema</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <Button
+                      variant={theme === "light" ? "default" : "outline"}
+                      onClick={() => setTheme("light")}
+                      className="flex items-center gap-2"
+                    >
+                      <Sun className="h-4 w-4" />
+                      Claro
+                    </Button>
+                    <Button
+                      variant={theme === "dark" ? "default" : "outline"}
+                      onClick={() => setTheme("dark")}
+                      className="flex items-center gap-2"
+                    >
+                      <Moon className="h-4 w-4" />
+                      Oscuro
+                    </Button>
+                    <Button
+                      variant={theme === "system" ? "default" : "outline"}
+                      onClick={() => setTheme("system")}
+                      className="flex items-center gap-2"
+                    >
+                      <Monitor className="h-4 w-4" />
+                      Sistema
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label className="text-base">Configuración Actual</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Tema actual:{" "}
+                    <span className="font-medium capitalize">{theme}</span>
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
