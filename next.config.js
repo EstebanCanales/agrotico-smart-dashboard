@@ -24,7 +24,7 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   // Configuración para evitar problemas con archivos de referencia del cliente
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -33,6 +33,22 @@ const nextConfig = {
         tls: false,
       };
     }
+    
+    // Configuración específica para evitar problemas con archivos de referencia
+    if (!dev) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization.splitChunks,
+          cacheGroups: {
+            ...config.optimization.splitChunks?.cacheGroups,
+            default: false,
+            vendors: false,
+          },
+        },
+      };
+    }
+    
     return config;
   },
 };

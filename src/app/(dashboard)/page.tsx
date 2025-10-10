@@ -1,8 +1,13 @@
 import { getRobotsData } from "@/actions/dashboard";
-import Dashboard from "@/components/Dashboard";
+import DashboardServer from "@/components/DashboardServer";
+
+// Forzar renderizado dinámico para evitar problemas con archivos de referencia
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const { robots, lastUpdate } = await getRobotsData();
 
-  return <Dashboard initialRobots={robots} initialLastUpdate={lastUpdate} />;
+  return (
+    <DashboardServer initialRobots={robots} initialLastUpdate={lastUpdate} />
+  );
 }

@@ -19,7 +19,7 @@ interface DashboardProps {
   initialLastUpdate: string;
 }
 
-export default function Dashboard({
+export default function DashboardClient({
   initialRobots,
   initialLastUpdate,
 }: DashboardProps) {
