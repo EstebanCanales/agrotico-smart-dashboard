@@ -136,7 +136,7 @@ export async function generateNewRecord(robotUuid: string) {
 
     await connection.commit();
 
-    revalidatePath("/(dashboard)");
+    revalidatePath("/dashboard");
     return { success: true };
 
   } catch (error) {
