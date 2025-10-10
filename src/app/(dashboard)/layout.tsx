@@ -1,15 +1,9 @@
-"use client";
-
-import { AuthProvider } from "@/contexts/AuthContext";
+import AuthProviderWrapper from "@/components/providers/AuthProviderWrapper";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <AuthProvider>
-      {children}
-    </AuthProvider>
-  );
+  return <AuthProviderWrapper>{children}</AuthProviderWrapper>;
 }
