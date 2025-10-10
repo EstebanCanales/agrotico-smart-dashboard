@@ -7,7 +7,13 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import axios from "axios";
+
+import {
+  loginUser,
+  registerUser,
+  getProfile,
+  logoutUser,
+} from "@/actions/auth";
 
 interface User {
   id: string;
@@ -15,6 +21,7 @@ interface User {
   nombre: string;
   tipo: string;
   estado: string;
+  ai_model?: string;
 }
 
 interface AuthContextType {
@@ -53,43 +60,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Verificar autenticación al cargar
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Verificar si estamos en el cliente
+        if (typeof window === "undefined") {
+          setLoading(false);
+          return;
+        }
+
         const storedToken = localStorage.getItem("token");
         const storedUser = localStorage.getItem("user");
 
         if (storedToken && storedUser) {
-          console.log(
-            "AuthContext: Token y usuario encontrados en localStorage"
-          );
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-          axios.defaults.headers.common[
-            "Authorization"
-          ] = `Bearer ${storedToken}`;
+          // Verify token validity using server action
+          const profileResponse = await getProfile(storedToken);
 
-          // Verificar que el token sigue siendo válido
-          try {
-            const response = await axios.get(
-              "http://localhost:5001/api/auth/profile"
-            );
-            if (response.data.success) {
-              console.log("AuthContext: Token válido, usuario autenticado");
-            } else {
-              throw new Error("Token inválido");
-            }
-          } catch (error) {
-            console.log("AuthContext: Token inválido, limpiando datos");
-            logout();
+          if (profileResponse.success && profileResponse.data) {
+            setToken(storedToken);
+            setUser(profileResponse.data as User);
+          } else {
+            // Limpiar datos sin llamar a logout para evitar recursión
+            setUser(null);
+            setToken(null);
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
           }
-        } else {
-          console.log("AuthContext: No hay datos de autenticación");
         }
       } catch (error) {
         console.error("AuthContext: Error verificando autenticación:", error);
-        logout();
+        // Limpiar datos sin llamar a logout para evitar recursión
+        setUser(null);
+        setToken(null);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
       } finally {
         setLoading(false);
       }
@@ -99,36 +105,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    delete axios.defaults.headers.common["Authorization"];
+    try {
+      // Limpiar estado
+      setUser(null);
+      setToken(null);
+
+      // Limpiar localStorage
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
+      // Limpiar sessionStorage también por seguridad
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+    } catch (error) {
+      console.error("AuthContext: Error durante el logout:", error);
+      // Forzar limpieza incluso si hay error
+      setUser(null);
+      setToken(null);
+      localStorage.clear();
+      sessionStorage.clear();
+    }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
-      const response = await axios.post(
-        "http://localhost:5001/api/auth/login",
-        {
-          email,
-          password,
-        }
-      );
+      const response = await loginUser(email, password);
 
-      if (response.data.success) {
-        const { user, token } = response.data.data;
+      if (response.success && response.data) {
+        const { user, token } = response.data;
+
         setUser(user);
         setToken(token);
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+        // Guardar en localStorage de forma segura
+        if (typeof window !== "undefined") {
+          localStorage.setItem("token", token);
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+
         return true;
+      } else {
+        return false;
       }
-      return false;
     } catch (error) {
-      console.error("Error en login:", error);
+      console.error("AuthContext: Error en login:", error);
       return false;
     } finally {
       setLoading(false);
@@ -138,12 +159,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
       setLoading(true);
-      const response = await axios.post(
-        "http://localhost:5001/api/auth/register",
-        userData
-      );
+      const response = await registerUser(userData);
 
-      if (response.data.success) {
+      if (response.success) {
         return true;
       }
       return false;

@@ -15,7 +15,7 @@ const config = {
     port: process.env.PORT || 5001
   },
   deepseek: {
-    apiKey: 'sk-86a1814a7b1a4870ad42c2fd713f7301',
+    apiKey: process.env.DEEPSEEK_API_KEY || 'your_deepseek_api_key_here',
     baseURL: 'https://api.deepseek.com/v1',
     model: 'deepseek-chat'
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import pool from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,46 +10,55 @@ export async function POST(request: NextRequest) {
     // Validaciones básicas
     if (!nombre || !email || !password) {
       return NextResponse.json(
-        { message: 'Nombre, email y contraseña son requeridos' },
+        { error: 'Nombre, email y contraseña son requeridos' },
         { status: 400 }
       );
     }
 
     if (password.length < 6) {
       return NextResponse.json(
-        { message: 'La contraseña debe tener al menos 6 caracteres' },
+        { error: 'La contraseña debe tener al menos 6 caracteres' },
         { status: 400 }
       );
     }
 
-    // Llamar a la API real del servidor Express
-    const response = await fetch('http://localhost:5001/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        nombre,
-        email,
-        password,
-        telefono,
-        ubicacion,
-      }),
-    });
+    // Verificar si el email ya existe
+    const [existingUsers] = await pool.query<RowDataPacket[]>(
+      "SELECT id FROM usuarios WHERE email = ?",
+      [email]
+    );
 
-    const data = await response.json();
-
-    if (!response.ok) {
+    if (existingUsers.length > 0) {
       return NextResponse.json(
-        { message: data.message || 'Error al crear la cuenta' },
-        { status: response.status }
+        { error: 'El email ya está registrado' },
+        { status: 400 }
       );
     }
+
+    // Hash de la contraseña
+    const saltRounds = 12;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+
+    // Insertar usuario en la base de datos
+    const [result] = await pool.query(
+      `INSERT INTO usuarios (nombre, email, password_hash, telefono, ubicacion, tipo, estado) 
+       VALUES (?, ?, ?, ?, ?, 'usuario', 'activo')`,
+      [nombre, email, password_hash, telefono || null, ubicacion || null]
+    );
+
+    const insertResult = result as any;
+    const userId = insertResult.insertId;
+
+    // Obtener el usuario creado
+    const [newUser] = await pool.query<RowDataPacket[]>(
+      "SELECT id, nombre, email, tipo, estado, created_at FROM usuarios WHERE id = ?",
+      [userId]
+    );
 
     return NextResponse.json(
       { 
         message: 'Usuario creado exitosamente',
-        user: data.data 
+        user: newUser[0]
       },
       { status: 201 }
     );
@@ -56,7 +66,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error en registro:', error);
     return NextResponse.json(
-      { message: 'Error interno del servidor' },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   }
