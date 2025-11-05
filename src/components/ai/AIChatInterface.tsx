@@ -19,7 +19,6 @@ import {
   Plus,
   MessageSquare,
   Save,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { chatWithAI } from "@/actions/ai";
@@ -826,15 +825,6 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button
-                onClick={createNewChat}
-                size="sm"
-                variant="secondary"
-                className="h-8 px-3 bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-              >
-                <Sparkles className="h-3.5 w-3.5 mr-2" />
-                Resetear
-              </Button>
               <Button
                 onClick={handleRefreshSensorData}
                 disabled={loadingSensorData || !canChat}
