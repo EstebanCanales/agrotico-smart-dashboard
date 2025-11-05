@@ -35,21 +35,27 @@ export async function getRobotsData(): Promise<{
     `
     );
 
-    const robots = rows.map((row) => ({
-      id: row.id.toString(),
-      nombre: row.nombre || "Robot Sin Nombre",
-      uuid: row.uuid || "",
-      ubicacion: row.ubicacion || "Ubicación No Especificada",
-      latitud: row.latitud ? parseFloat(row.latitud) : undefined,
-      longitud: row.longitud ? parseFloat(row.longitud) : undefined,
-      estado: row.estado || "inactivo",
-      ultima_actividad: row.ultima_actividad || new Date().toISOString(),
-      total_registros: parseInt(row.total_registros) || 0,
-      registros_hoy: parseInt(row.registros_hoy) || 0,
-      promedio_temperatura: parseFloat(row.promedio_temperatura) || 0,
-      promedio_humedad: parseFloat(row.promedio_humedad) || 0,
-      alertas: parseInt(row.alertas) || 0,
-    }));
+    const robots = rows.map((row) => {
+      // Parse coordinates safely
+      const latitud = row.latitud != null ? parseFloat(row.latitud) : undefined;
+      const longitud = row.longitud != null ? parseFloat(row.longitud) : undefined;
+      
+      return {
+        id: row.id.toString(),
+        nombre: row.nombre || "Robot Sin Nombre",
+        uuid: row.uuid || "",
+        ubicacion: row.ubicacion || "Ubicación No Especificada",
+        latitud: latitud && !isNaN(latitud) ? latitud : undefined,
+        longitud: longitud && !isNaN(longitud) ? longitud : undefined,
+        estado: row.estado || "inactivo",
+        ultima_actividad: row.ultima_actividad || new Date().toISOString(),
+        total_registros: parseInt(row.total_registros) || 0,
+        registros_hoy: parseInt(row.registros_hoy) || 0,
+        promedio_temperatura: parseFloat(row.promedio_temperatura) || 0,
+        promedio_humedad: parseFloat(row.promedio_humedad) || 0,
+        alertas: parseInt(row.alertas) || 0,
+      };
+    });
 
     return {
       robots,
