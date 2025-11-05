@@ -19,18 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useSession } from "next-auth/react";
-import { RefreshCw, Moon, Sun, Monitor } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "@/components/providers/ThemeProvider";
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
   const user = session?.user;
-  const { theme, setTheme } = useTheme();
 
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -44,7 +41,6 @@ export default function SettingsPage() {
   const [isSavingAccount, setIsSavingAccount] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isSavingAI, setIsSavingAI] = useState(false);
-  const [isSavingAppearance, setIsSavingAppearance] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const { toast } = useToast();
 
@@ -235,20 +231,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
-    setTheme(newTheme);
-    toast({
-      title: "Tema actualizado",
-      description: `El tema se ha cambiado a ${
-        newTheme === "system"
-          ? "sistema"
-          : newTheme === "dark"
-          ? "oscuro"
-          : "claro"
-      }.`,
-    });
-  };
-
   if (status === "loading") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4">
@@ -268,10 +250,9 @@ export default function SettingsPage() {
   return (
     <div className="p-4">
       <Tabs defaultValue="account" className="w-full max-w-5xl mx-auto">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="account">Cuenta</TabsTrigger>
           <TabsTrigger value="ai">IA</TabsTrigger>
-          <TabsTrigger value="appearance">Apariencia</TabsTrigger>
         </TabsList>
         <TabsContent value="account">
           <Card>
@@ -446,77 +427,6 @@ export default function SettingsPage() {
                     : "Actualizar Configuración de IA"}
                 </Button>
               </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="appearance">
-          <Card>
-            <CardHeader>
-              <CardTitle>Apariencia</CardTitle>
-              <CardDescription>
-                Personaliza la apariencia de tu dashboard y elige tu tema
-                preferido.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="theme-select">Tema</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Elige entre tema claro, oscuro o seguir la preferencia del
-                      sistema.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <Button
-                    variant={theme === "light" ? "default" : "outline"}
-                    onClick={() => handleThemeChange("light")}
-                    className="flex flex-col items-center space-y-2 h-20"
-                  >
-                    <Sun className="h-5 w-5" />
-                    <span>Claro</span>
-                  </Button>
-
-                  <Button
-                    variant={theme === "dark" ? "default" : "outline"}
-                    onClick={() => handleThemeChange("dark")}
-                    className="flex flex-col items-center space-y-2 h-20"
-                  >
-                    <Moon className="h-5 w-5" />
-                    <span>Oscuro</span>
-                  </Button>
-
-                  <Button
-                    variant={theme === "system" ? "default" : "outline"}
-                    onClick={() => handleThemeChange("system")}
-                    className="flex flex-col items-center space-y-2 h-20"
-                  >
-                    <Monitor className="h-5 w-5" />
-                    <span>Sistema</span>
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Configuración actual</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Tema:{" "}
-                      {theme === "system"
-                        ? "Sistema"
-                        : theme === "dark"
-                        ? "Oscuro"
-                        : "Claro"}
-                    </p>
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

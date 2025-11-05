@@ -63,6 +63,35 @@ interface AIChatInterfaceProps {
   initialSensorData: SensorData | null;
 }
 
+const WELCOME_MESSAGE_CONTENT = `# 🌱 ¡Bienvenido a AgroTico AI!
+
+Soy tu asistente especializado en **agricultura de precisión** y análisis de datos agrícolas. Estoy aquí para ayudarte a optimizar tus cultivos y tomar decisiones informadas basadas en los datos de tus sensores.
+
+## 🎯 ¿En qué puedo ayudarte?
+
+- **📊 Análisis de datos**: Interpretación de condiciones ambientales
+- **🌱 Recomendaciones de cultivos**: Qué plantar según las condiciones
+- **💧 Gestión del riego**: Optimización del uso del agua
+- **⚠️ Alertas tempranas**: Detección de problemas potenciales
+- **🔬 Diagnóstico**: Identificación de enfermedades y plagas
+- **📈 Optimización**: Mejora del rendimiento de cultivos
+
+## 💡 Ejemplos de preguntas:
+- "¿Cómo están mis cultivos hoy?"
+- "¿Necesito regar más?"
+- "¿Qué cultivos son mejores para esta época?"
+- "¿Hay algún problema con mis plantas?"
+
+**¿En qué puedo ayudarte hoy?** 🤔`;
+
+const getInitialMessages = (): Message[] => [
+  {
+    id: "welcome",
+    role: "assistant",
+    content: WELCOME_MESSAGE_CONTENT,
+  },
+];
+
 export default function AIChatInterface({
   initialSensorData,
 }: AIChatInterfaceProps) {
@@ -171,32 +200,7 @@ export default function AIChatInterface({
   const { toast } = useToast();
 
   // Manual chat state management
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: `# 🌱 ¡Bienvenido a AgroTico AI!
-
-Soy tu asistente especializado en **agricultura de precisión** y análisis de datos agrícolas. Estoy aquí para ayudarte a optimizar tus cultivos y tomar decisiones informadas basadas en los datos de tus sensores.
-
-## 🎯 ¿En qué puedo ayudarte?
-
-- **📊 Análisis de datos**: Interpretación de condiciones ambientales
-- **🌱 Recomendaciones de cultivos**: Qué plantar según las condiciones
-- **💧 Gestión del riego**: Optimización del uso del agua
-- **⚠️ Alertas tempranas**: Detección de problemas potenciales
-- **🔬 Diagnóstico**: Identificación de enfermedades y plagas
-- **📈 Optimización**: Mejora del rendimiento de cultivos
-
-## 💡 Ejemplos de preguntas:
-- "¿Cómo están mis cultivos hoy?"
-- "¿Necesito regar más?"
-- "¿Qué cultivos son mejores para esta época?"
-- "¿Hay algún problema con mis plantas?"
-
-**¿En qué puedo ayudarte hoy?** 🤔`,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => getInitialMessages());
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -241,14 +245,32 @@ Soy tu asistente especializado en **agricultura de precisión** y análisis de d
 
         if (data.success && data.data && data.data.length > 0) {
           const robotData = data.data[0];
+          const rawLat = robotData?.location?.latitud;
+          const rawLng = robotData?.location?.longitud;
+          const normalizedLat =
+            typeof rawLat === "number"
+              ? rawLat
+              : typeof rawLat === "string"
+              ? parseFloat(rawLat)
+              : Number.NaN;
+          const normalizedLng =
+            typeof rawLng === "number"
+              ? rawLng
+              : typeof rawLng === "string"
+              ? parseFloat(rawLng)
+              : Number.NaN;
 
           setSensorData({
             id: 0,
             robot_uuid: robotData.robot_uuid || "",
-            timestamp: new Date().toISOString(),
+            timestamp: robotData.timestamp || new Date().toISOString(),
             location: {
-              latitud: robotData.latitud || 0,
-              longitud: robotData.longitud || 0,
+              latitud: Number.isFinite(normalizedLat)
+                ? normalizedLat
+                : Number.NaN,
+              longitud: Number.isFinite(normalizedLng)
+                ? normalizedLng
+                : Number.NaN,
             },
             temperature: robotData.temperature,
             humidity: robotData.humidity,
@@ -463,14 +485,7 @@ Soy tu asistente especializado en **agricultura de precisión** y análisis de d
   const createNewChat = () => {
     const newChatId = `chat-${Date.now()}`;
     setCurrentChatId(newChatId);
-    setMessages([
-      {
-        id: "welcome",
-        role: "assistant",
-        content:
-          "¡Hola! Soy tu asistente de IA agrícola. Puedo ayudarte a analizar tus datos de sensores, dar recomendaciones sobre cultivos, y responder preguntas sobre agricultura. ¿En qué puedo ayudarte hoy?",
-      },
-    ]);
+    setMessages(getInitialMessages());
   };
 
   // Cargar chat específico
@@ -479,15 +494,29 @@ Soy tu asistente especializado en **agricultura de precisión** y análisis de d
     if (savedChats[chatId]) {
       setMessages(savedChats[chatId]);
     } else {
-      setMessages([
-        {
-          id: "welcome",
-          role: "assistant",
-          content:
-            "¡Hola! Soy tu asistente de IA agrícola. Puedo ayudarte a analizar tus datos de sensores, dar recomendaciones sobre cultivos, y responder preguntas sobre agricultura. ¿En qué puedo ayudarte hoy?",
-        },
-      ]);
+      setMessages(getInitialMessages());
     }
+  };
+
+  const handleDeleteChat = (chatId: string) => {
+    setSavedChats((prev) => {
+      const updatedChats = { ...prev };
+      delete updatedChats[chatId];
+      if (typeof window !== "undefined") {
+        localStorage.setItem("ai-chats", JSON.stringify(updatedChats));
+      }
+      return updatedChats;
+    });
+
+    if (currentChatId === chatId) {
+      setCurrentChatId("default");
+      setMessages(getInitialMessages());
+    }
+
+    toast({
+      title: "Chat eliminado",
+      description: "La conversación se eliminó del historial.",
+    });
   };
 
   // Handle sensor data refresh
@@ -513,14 +542,7 @@ Soy tu asistente especializado en **agricultura de precisión** y análisis de d
 
   // Handle clear chat
   const handleClearChat = () => {
-    setMessages([
-      {
-        id: "welcome",
-        role: "assistant",
-        content:
-          "¡Hola! Soy tu asistente de IA agrícola. Puedo ayudarte a analizar tus datos de sensores, dar recomendaciones sobre cultivos, y responder preguntas sobre agricultura. ¿En qué puedo ayudarte hoy?",
-      },
-    ]);
+    setMessages(getInitialMessages());
     toast({
       title: "Chat limpiado",
       description: "La conversación ha sido reiniciada.",
@@ -758,16 +780,38 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
                       <DropdownMenuItem
                         key={chatId}
                         onSelect={() => loadChat(chatId)}
-                        className="flex items-center justify-between text-sm"
+                        className="text-sm"
                       >
-                        <span className="truncate">
-                          {chatId === "default"
-                            ? "Chat principal"
-                            : `Chat ${chatId.split("-")[1]}`}
-                        </span>
-                        <span className="text-xs text-slate-400">
-                          {savedChats[chatId]?.length || 0}
-                        </span>
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="truncate">
+                              {chatId === "default"
+                                ? "Chat principal"
+                                : `Chat ${chatId.split("-")[1]}`}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              {savedChats[chatId]?.length || 0}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-slate-400 hover:text-red-500"
+                            disabled={chatId === "default"}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              handleDeleteChat(chatId);
+                            }}
+                            aria-label={
+                              chatId === "default"
+                                ? "Eliminar chat principal (deshabilitado)"
+                                : "Eliminar chat"
+                            }
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </DropdownMenuItem>
                     ))
                   )}
