@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SensorData } from "@/actions/ai";
@@ -9,10 +9,6 @@ import {
   ArrowLeft,
   Send,
   RefreshCw,
-  Thermometer,
-  Droplets,
-  Sun,
-  Leaf,
   Trash2,
   Copy,
   Check,
@@ -23,16 +19,15 @@ import {
   Plus,
   MessageSquare,
   Save,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import { chatWithAI } from "@/actions/ai";
 import { saveReport } from "@/actions/reports";
 
 // Shadcn UI components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -42,6 +37,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
@@ -67,16 +70,39 @@ export default function AIChatInterface({
     initialSensorData
   );
   const [loadingSensorData, setLoadingSensorData] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [robots, setRobots] = useState<Robot[]>([]);
-  const [selectedRobot, setSelectedRobot] = useState<string>("all");
+  const [selectedRobot, setSelectedRobot] = useState<string>("");
   const [loadingRobots, setLoadingRobots] = useState(false);
   const [savedChats, setSavedChats] = useState<{ [key: string]: Message[] }>(
     {}
   );
   const [currentChatId, setCurrentChatId] = useState<string>("default");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selectedRobotMeta = useMemo(
+    () => robots.find((robot) => robot.uuid === selectedRobot) || null,
+    [robots, selectedRobot]
+  );
+  const friendlyRobotName = selectedRobotMeta?.nombre
+    ? selectedRobotMeta.nombre
+    : selectedRobotMeta
+    ? selectedRobotMeta.uuid
+    : "tu robot";
+  const suggestedPrompts = useMemo(
+    () => [
+      "Genera un diagnóstico integral del microclima actual.",
+      `¿Qué alertas debo monitorear para ${friendlyRobotName}?`,
+      "Sugiere acciones de riego y nutrición para las próximas 24 horas.",
+    ],
+    [friendlyRobotName]
+  );
+  const savedChatIds = Object.keys(savedChats);
+
+  const canChat = Boolean(
+    selectedRobot && selectedRobot !== "all" && robots.length > 0
+  );
 
   // Estados para paneles colapsables
 
@@ -109,7 +135,8 @@ export default function AIChatInterface({
         .join("\n\n---\n\n");
 
       // Obtener el robot seleccionado
-      const robotUuid = selectedRobot === "all" ? null : selectedRobot;
+      const robotUuid =
+        !selectedRobot || selectedRobot === "all" ? null : selectedRobot;
 
       // Llamar a la función de guardar reporte
       const result = await saveReport(
@@ -204,7 +231,7 @@ Soy tu asistente especializado en **agricultura de precisión** y análisis de d
   };
 
   // Actualizar datos de sensores basado en robot seleccionado
-  const updateSensorData = async (robotUuid: string) => {
+  const updateSensorData = useCallback(async (robotUuid: string) => {
     setLoadingSensorData(true);
     try {
       const response = await fetch(`/api/analytics/current?robot=${robotUuid}`);
@@ -229,32 +256,88 @@ Soy tu asistente especializado en **agricultura de precisión** y análisis de d
             soil: robotData.soil,
             climate: robotData.climate,
           });
+        } else {
+          setSensorData(null);
         }
       } else {
         console.error("❌ Error en la respuesta de sensores:", response.status);
+        setSensorData(null);
       }
     } catch (error) {
       console.error("❌ Error updating sensor data:", error);
+      setSensorData(null);
     } finally {
       setLoadingSensorData(false);
     }
-  };
+  }, []);
 
   // Manejar cambio de robot seleccionado
   const handleRobotChange = (value: string) => {
     setSelectedRobot(value);
-    if (value === "all") {
-      // Cargar datos de todos los robots (usar datos iniciales)
-      setSensorData(initialSensorData);
-    } else {
-      // Cargar datos del robot específico
-      updateSensorData(value);
+    if (!value || value === "all") {
+      setSensorData(null);
+    }
+  };
+
+  useEffect(() => {
+    if (robots.length === 0) {
+      if (selectedRobot !== "") {
+        setSelectedRobot("");
+      }
+      setSensorData(null);
+      return;
+    }
+
+    if (robots.length === 1) {
+      const soleRobotUuid = robots[0].uuid;
+      if (selectedRobot !== soleRobotUuid) {
+        setSelectedRobot(soleRobotUuid);
+      }
+      return;
+    }
+
+    const robotExists = robots.some((robot) => robot.uuid === selectedRobot);
+    if (!selectedRobot || !robotExists) {
+      if (selectedRobot !== "all") {
+        setSelectedRobot("all");
+      }
+      setSensorData(null);
+    }
+  }, [robots, selectedRobot]);
+
+  useEffect(() => {
+    if (!selectedRobot || selectedRobot === "all") {
+      return;
+    }
+
+    setSensorData(null);
+    updateSensorData(selectedRobot);
+  }, [selectedRobot, updateSensorData]);
+
+  const handlePromptSelect = (prompt: string) => {
+    setInput(prompt);
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
+
+    if (!canChat) {
+      toast({
+        title: "Selecciona un robot",
+        description:
+          robots.length === 0
+            ? "No hay robots vinculados. Vincula un robot para poder chatear."
+            : "Elige un robot específico para obtener respuestas precisas.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Add user message
     const userMessage: Message = {
@@ -463,31 +546,6 @@ Soy tu asistente especializado en **agricultura de precisión** y análisis de d
     }
   };
 
-  // Handle download chat
-  const handleDownloadChat = () => {
-    const chatContent = messages
-      .map(
-        (msg) =>
-          `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`
-      )
-      .join("\n\n");
-
-    const blob = new Blob([chatContent], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `chat-agricola-${new Date().toISOString().split("T")[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: "Chat descargado",
-      description: "La conversación se ha descargado como archivo de texto.",
-    });
-  };
-
   // Handle generate report
   const handleGenerateReport = async () => {
     try {
@@ -590,64 +648,190 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
   };
 
   return (
-    <div className="h-full bg-gray-50 flex flex-col">
+    <div className="h-full bg-gradient-to-br from-emerald-50/40 via-white to-white flex flex-col">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0">
+      <header className="flex-shrink-0 border-b border-emerald-100/70 bg-white/80 backdrop-blur">
         <div className="px-4 lg:px-6">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center min-w-0 flex-1">
-              <Link href="/" className="flex items-center mr-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 py-4">
+            <div className="flex items-center min-w-0 gap-4">
+              <Link href="/" className="flex items-center">
                 <Button variant="ghost" size="icon" className="h-10 w-10">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>
-              <div className="flex-shrink-0 flex items-center min-w-0">
-                <Brain className="h-8 w-8 text-purple-600 mr-3" />
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex-shrink-0">
+                  <Brain className="h-9 w-9 text-emerald-600" />
+                </div>
                 <div className="min-w-0">
-                  <h1 className="text-xl font-semibold text-gray-900 truncate">
-                    Asistente de IA Agrícola
+                  <h1 className="text-xl font-semibold text-slate-900 truncate">
+                    AgroTico AI
                   </h1>
-                  <p className="text-sm text-gray-500 truncate">
-                    Análisis inteligente de datos agrícolas
+                  <p className="text-sm text-slate-500 truncate">
+                    Conversaciones agrícolas con inteligencia de contexto
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  Robot
+                </span>
+                {robots.length > 0 ? (
+                  <Select
+                    value={selectedRobot || undefined}
+                    onValueChange={handleRobotChange}
+                  >
+                    <SelectTrigger className="w-52 h-9" disabled={loadingRobots}>
+                      <SelectValue placeholder="Selecciona un robot" />
+                    </SelectTrigger>
+                    <SelectContent align="end">
+                      {robots.length > 1 && (
+                        <SelectItem value="all">
+                          <div className="flex items-center">
+                            <RobotIcon className="h-4 w-4 mr-2" />
+                            <span>Todos los robots</span>
+                          </div>
+                        </SelectItem>
+                      )}
+                      {robots.map((robot) => (
+                        <SelectItem key={robot.uuid} value={robot.uuid}>
+                          <div className="flex items-center">
+                            <RobotIcon className="h-4 w-4 mr-2" />
+                            <span className="truncate">
+                              {robot.nombre || robot.uuid}
+                            </span>
+                            <Badge
+                              variant="secondary"
+                              className="ml-2 text-[10px]"
+                              style={{
+                                backgroundColor:
+                                  robot.estado === "activo"
+                                    ? "#059669"
+                                    : "#d97706",
+                                color: "white",
+                              }}
+                            >
+                              {robot.estado}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">
+                    Sin robots vinculados
+                  </Badge>
+                )}
+                {loadingRobots && (
+                  <span className="text-xs text-slate-500 flex items-center gap-1">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Cargando…
+                  </span>
+                )}
+                {selectedRobot === "all" && robots.length > 1 && (
+                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-200 bg-amber-50">
+                    Elige un robot específico
+                  </Badge>
+                )}
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 px-3">
+                    <MessageSquare className="h-3.5 w-3.5 mr-2" />
+                    Historial
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel>Chats guardados</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {savedChatIds.length === 0 ? (
+                    <DropdownMenuItem disabled>
+                      No hay conversaciones guardadas
+                    </DropdownMenuItem>
+                  ) : (
+                    savedChatIds.map((chatId) => (
+                      <DropdownMenuItem
+                        key={chatId}
+                        onSelect={() => loadChat(chatId)}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="truncate">
+                          {chatId === "default"
+                            ? "Chat principal"
+                            : `Chat ${chatId.split("-")[1]}`}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {savedChats[chatId]?.length || 0}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => createNewChat()}
+                    className="text-emerald-600"
+                  >
+                    <Plus className="h-3 w-3 mr-2" />
+                    Nuevo chat
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                onClick={createNewChat}
+                size="sm"
+                variant="secondary"
+                className="h-8 px-3 bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-2" />
+                Resetear
+              </Button>
+              <Button
+                onClick={handleRefreshSensorData}
+                disabled={loadingSensorData || !canChat}
+                variant="outline"
+                size="sm"
+                className="h-8 px-3"
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 mr-2 ${
+                    loadingSensorData ? "animate-spin" : ""
+                  }`}
+                />
+                Sincronizar
+              </Button>
               <Button
                 onClick={saveChatToDatabase}
                 size="sm"
                 variant="outline"
-                className="h-8 px-3 text-xs"
-                disabled={messages.length <= 1}
+                className="h-8 px-3"
+                disabled={!canChat || messages.length <= 1}
               >
-                <Save className="h-3 w-3 mr-1" />
-                Guardar Chat
-              </Button>
-              <Button
-                onClick={handleRefreshSensorData}
-                disabled={loadingSensorData}
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 mr-2 ${
-                    loadingSensorData ? "animate-spin" : ""
-                  }`}
-                />
-                Actualizar
+                <Save className="h-3.5 w-3.5 mr-2" />
+                Guardar
               </Button>
               <Button
                 onClick={handleGenerateReport}
                 variant="outline"
                 size="sm"
+                className="h-8 px-3"
+                disabled={!canChat || messages.length <= 1}
               >
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="h-3.5 w-3.5 mr-2" />
                 Reporte
               </Button>
-              <Button onClick={handleClearChat} variant="outline" size="sm">
-                <Trash2 className="h-4 w-4 mr-2" />
+              <Button
+                onClick={handleClearChat}
+                variant="outline"
+                size="sm"
+                className="h-8 px-3"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-2" />
                 Limpiar
               </Button>
             </div>
@@ -655,211 +839,11 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
         </div>
       </header>
 
-      {/* Main Content - Unified Layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Chat Interface */}
-        <main className="flex-1 flex flex-col bg-white min-w-0">
-          {/* Unified Control Panel */}
-          <div className="bg-gray-50 border-b border-gray-200 p-4">
-            <div className="max-w-6xl mx-auto">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Robot Selection */}
-                <Card className="bg-white shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center">
-                      <RobotIcon className="h-4 w-4 mr-2 text-blue-600" />
-                      Robot Seleccionado
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <Select
-                      value={selectedRobot}
-                      onValueChange={handleRobotChange}
-                    >
-                      <SelectTrigger className="w-full h-9">
-                        <SelectValue placeholder="Seleccionar robot" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">
-                          <div className="flex items-center">
-                            <RobotIcon className="h-4 w-4 mr-2" />
-                            <span>Todos los robots</span>
-                          </div>
-                        </SelectItem>
-                        {robots.map((robot) => (
-                          <SelectItem key={robot.uuid} value={robot.uuid}>
-                            <div className="flex items-center">
-                              <RobotIcon className="h-4 w-4 mr-2" />
-                              <span>{robot.nombre || robot.uuid}</span>
-                              <Badge
-                                variant="secondary"
-                                className="ml-2 text-xs"
-                                style={{
-                                  backgroundColor:
-                                    robot.estado === "activo"
-                                      ? "#4caf50"
-                                      : "#ff9800",
-                                  color: "white",
-                                }}
-                              >
-                                {robot.estado}
-                              </Badge>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {loadingRobots && (
-                      <div className="flex items-center justify-center mt-2">
-                        <LoadingSpinner />
-                        <span className="ml-2 text-xs text-gray-600">
-                          Cargando robots...
-                        </span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Sensor Data */}
-                <Card className="bg-white shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Thermometer className="h-4 w-4 mr-2 text-green-600" />
-                        Sensores Locales
-                      </div>
-                      {sensorData && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                          📡 Activos
-                        </span>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    {!sensorData ? (
-                      <div className="flex items-center justify-center p-2">
-                        <LoadingSpinner />
-                        <span className="ml-2 text-xs text-gray-600">
-                          Cargando...
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2">
-                        {sensorData.temperature && (
-                          <div className="flex items-center p-2 bg-blue-50 rounded border border-blue-200">
-                            <Thermometer className="h-3 w-3 text-blue-600 mr-1 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-700 truncate">
-                                {sensorData.temperature.temperatura_celsius}°C
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
-                                {sensorData.temperature.presion_hpa} hPa
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {sensorData.humidity && (
-                          <div className="flex items-center p-2 bg-green-50 rounded border border-green-200">
-                            <Droplets className="h-3 w-3 text-green-600 mr-1 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-700 truncate">
-                                {sensorData.humidity.humedad_pct}%
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
-                                {sensorData.humidity.co2_ppm} ppm
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {sensorData.light && (
-                          <div className="flex items-center p-2 bg-yellow-50 rounded border border-yellow-200">
-                            <Sun className="h-3 w-3 text-yellow-600 mr-1 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-700 truncate">
-                                {sensorData.light.lux} lux
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
-                                UV: {sensorData.light.indice_uv}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {sensorData.soil && (
-                          <div className="flex items-center p-2 bg-orange-50 rounded border border-orange-200">
-                            <Leaf className="h-3 w-3 text-orange-600 mr-1 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-700 truncate">
-                                {sensorData.soil.humedad_suelo}%
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
-                                {sensorData.soil.temperatura_suelo_celsius}°C
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Chat Management */}
-                <Card className="bg-white shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center justify-between">
-                      <div className="flex items-center">
-                        <MessageSquare className="h-4 w-4 mr-2 text-purple-600" />
-                        Chats Guardados
-                      </div>
-                      <Button
-                        onClick={createNewChat}
-                        size="sm"
-                        variant="outline"
-                        className="h-6 w-6 p-0"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-1 max-h-24 overflow-y-auto">
-                      {Object.keys(savedChats).map((chatId) => (
-                        <div
-                          key={chatId}
-                          onClick={() => loadChat(chatId)}
-                          className={`p-2 rounded cursor-pointer transition-colors ${
-                            currentChatId === chatId
-                              ? "bg-purple-50 border border-purple-200"
-                              : "hover:bg-gray-50"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center min-w-0 flex-1">
-                              <MessageSquare className="h-3 w-3 mr-2 text-gray-500 flex-shrink-0" />
-                              <span className="text-xs text-gray-700 truncate">
-                                {chatId === "default"
-                                  ? "Chat Principal"
-                                  : `Chat ${chatId.split("-")[1]}`}
-                              </span>
-                            </div>
-                            <span className="text-xs text-gray-500">
-                              {savedChats[chatId]?.length || 0}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-
+        <main className="flex-1 flex flex-col min-w-0">
           {/* Messages Area */}
-          <ScrollArea className="flex-1 p-4">
-            <div className="max-w-6xl mx-auto space-y-8">
+          <ScrollArea className="flex-1">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -874,15 +858,15 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
                       className={`relative overflow-hidden ${
                         message.role === "user"
                           ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white ml-auto shadow-lg"
-                          : "bg-white text-gray-900 shadow-lg border border-gray-200"
-                      } rounded-2xl`}
+                          : "bg-white/95 text-gray-900 shadow-lg border border-emerald-100"
+                      } rounded-2xl transition-shadow duration-200`}
                     >
                       {/* Header del mensaje */}
                       <div
                         className={`px-5 py-4 border-b ${
                           message.role === "user"
                             ? "border-blue-400/30"
-                            : "border-gray-100"
+                            : "border-emerald-50"
                         }`}
                       >
                         <div className="flex items-center justify-between">
@@ -891,13 +875,13 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
                               className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                                 message.role === "user"
                                   ? "bg-blue-400"
-                                  : "bg-green-100"
+                                  : "bg-emerald-100"
                               }`}
                             >
                               {message.role === "user" ? (
-                                <User className="h-4 w-4 text-white" />
+                                <User className="h-4 w-4" />
                               ) : (
-                                <Bot className="h-4 w-4 text-green-600" />
+                                <Bot className="h-4 w-4 text-emerald-600" />
                               )}
                             </div>
                             <div>
@@ -905,13 +889,13 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
                                 className={`text-sm font-semibold ${
                                   message.role === "user"
                                     ? "text-white"
-                                    : "text-gray-800"
+                                    : "text-slate-800"
                                 }`}
                               >
                                 {message.role === "user" ? "Tú" : "AgroTico AI"}
                               </span>
                               {message.role === "assistant" && (
-                                <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                                <span className="ml-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium">
                                   🌱 Especialista Agrícola
                                 </span>
                               )}
@@ -927,7 +911,7 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
                               className={`h-7 w-7 p-0 ${
                                 message.role === "user"
                                   ? "hover:bg-blue-400/20 text-white"
-                                  : "hover:bg-gray-100 text-gray-600"
+                                  : "hover:bg-emerald-50 text-emerald-600"
                               }`}
                             >
                               {copiedMessageId === message.id ? (
@@ -957,7 +941,7 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
 
                       {/* Decoración sutil */}
                       {message.role === "assistant" && (
-                        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-blue-400"></div>
+                        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-blue-400"></div>
                       )}
                     </div>
                   </div>
@@ -968,42 +952,38 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
               {isLoading && (
                 <div className="flex justify-start">
                   <div className={`max-w-[85%] sm:max-w-[75%] lg:max-w-[70%]`}>
-                    <div className="relative overflow-hidden bg-white text-gray-900 shadow-lg border border-gray-200 rounded-2xl">
-                      {/* Header del mensaje */}
-                      <div className="px-5 py-4 border-b border-gray-100">
+                    <div className="relative overflow-hidden bg-white/95 text-gray-900 shadow-lg border border-emerald-100 rounded-2xl">
+                      <div className="px-5 py-4 border-b border-emerald-50">
                         <div className="flex items-center space-x-3">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-green-100">
-                            <Bot className="h-4 w-4 text-green-600" />
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-emerald-100">
+                            <Bot className="h-4 w-4 text-emerald-600" />
                           </div>
                           <div>
-                            <span className="text-sm font-semibold text-gray-800">
+                            <span className="text-sm font-semibold text-slate-800">
                               AgroTico AI
                             </span>
-                            <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                            <span className="ml-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-medium">
                               🌱 Especialista Agrícola
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Contenido del mensaje */}
                       <div className="px-5 py-6">
                         <div className="flex items-center space-x-3">
-                          <RefreshCw className="h-5 w-5 animate-spin text-green-600" />
+                          <RefreshCw className="h-5 w-5 animate-spin text-emerald-600" />
                           <div>
-                            <span className="text-sm font-medium text-gray-800">
+                            <span className="text-sm font-medium text-slate-800">
                               Analizando tus datos agrícolas...
                             </span>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Procesando información de sensores y generando
-                              recomendaciones
+                            <p className="text-xs text-slate-600 mt-1">
+                              Procesando información de sensores y generando recomendaciones
                             </p>
                           </div>
                         </div>
                       </div>
 
-                      {/* Decoración sutil */}
-                      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-blue-400"></div>
+                      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-blue-400"></div>
                     </div>
                   </div>
                 </div>
@@ -1014,31 +994,44 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
           </ScrollArea>
 
           {/* Input Area */}
-          <div className="flex-shrink-0 border-t bg-white p-4">
+          <div className="flex-shrink-0 border-t border-emerald-100/60 bg-white/85 backdrop-blur px-4 py-4">
             <div className="max-w-6xl mx-auto">
+              {!canChat && (
+                <p className="mb-3 text-sm text-amber-600">
+                  {robots.length === 0
+                    ? "Robots no disponibles. Vincula un robot antes de conversar."
+                    : selectedRobot === "all"
+                    ? "Selecciona un robot específico para evitar respuestas genéricas."
+                    : "Selecciona un robot disponible para chatear con AgroTico AI."}
+                </p>
+              )}
               <form
                 onSubmit={handleSubmit}
-                className="flex items-center space-x-3"
+                className="flex flex-col gap-3 sm:flex-row sm:items-center"
               >
                 <div className="flex-1 relative">
                   <Input
+                    ref={inputRef}
                     value={input}
                     onChange={handleInputChange}
-                    placeholder="Escribe tu pregunta sobre agricultura..."
-                    disabled={isLoading}
-                    className="pr-14 text-base"
+                    placeholder="Describe la situación de tu cultivo o formula una pregunta…"
+                    disabled={isLoading || !canChat}
+                    className="h-12 rounded-xl border-emerald-100 bg-white/95 pr-16 text-base focus-visible:ring-emerald-500"
                   />
+                  <div className="pointer-events-none absolute inset-y-0 right-3 hidden items-center text-xs text-slate-400 sm:flex">
+                    {canChat ? "⇧ + Enter" : "Conecta un robot"}
+                  </div>
                 </div>
                 <Button
                   type="submit"
-                  disabled={isLoading || !input.trim()}
+                  disabled={isLoading || !input.trim() || !canChat}
                   size="sm"
-                  className="px-6"
+                  className="h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                 >
                   {isLoading ? (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      <span>Procesando...</span>
+                      <span>Procesando…</span>
                     </>
                   ) : (
                     <>
@@ -1051,6 +1044,7 @@ El reporte ha sido guardado en la base de datos y está disponible para consulta
             </div>
           </div>
         </main>
+
       </div>
     </div>
   );

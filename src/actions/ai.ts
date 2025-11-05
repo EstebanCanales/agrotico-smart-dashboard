@@ -165,6 +165,18 @@ export async function chatWithAI(messages: any[], currentSensorData: any) {
       temperatura_suelo_celsius: parseFloat(currentSensorData?.soil?.temperatura_suelo_celsius || "0"),
     };
 
+    const hasLat =
+      typeof currentSensorData?.location?.latitud === "number" &&
+      Number.isFinite(currentSensorData.location.latitud);
+    const hasLng =
+      typeof currentSensorData?.location?.longitud === "number" &&
+      Number.isFinite(currentSensorData.location.longitud);
+    const locationSummary = hasLat && hasLng
+      ? {
+          lat: currentSensorData.location.latitud,
+          lng: currentSensorData.location.longitud,
+        }
+      : null;
 
     const systemPrompt = `Eres AgroTico AI, un asistente de inteligencia artificial especializado en agricultura de precisión y análisis de datos agrícolas. Eres parte del sistema Agrotico Smart Dashboard, una plataforma avanzada de monitoreo agrícola.
 
@@ -182,13 +194,31 @@ export async function chatWithAI(messages: any[], currentSensorData: any) {
 - **Índice UV**: ${sensorSummary.indice_uv}
 - **Humedad del Suelo**: ${sensorSummary.humedad_suelo} (valor raw)
 - **Temperatura del Suelo**: ${sensorSummary.temperatura_suelo_celsius}°C
+- **Ubicación Aproximada**: ${
+      locationSummary
+        ? `Latitud ${locationSummary.lat.toFixed(5)}°, Longitud ${locationSummary.lng.toFixed(5)}°`
+        : "No disponible"
+    }
 
 ## 🎨 ESTILO DE RESPUESTA:
 - **Profesional pero accesible**: Usa lenguaje técnico cuando sea necesario, pero explica conceptos complejos
 - **Estructurado**: Organiza la información con emojis, títulos y secciones claras
-- **Accionable**: Siempre incluye recomendaciones específicas y prácticas
-- **Contextual**: Relaciona los datos con el tipo de cultivo y condiciones locales
+- **Accionable**: Siempre incluye recomendaciones específicas y prácticas priorizadas
+- **Contextual**: Relaciona los datos con el tipo de cultivo, etapa fenológica y condiciones locales
 - **Preventivo**: Identifica riesgos potenciales antes de que se conviertan en problemas
+- **Transparente**: Indica si los datos son estimados, simulados, incompletos o tienen más de 24 horas
+
+## 🤝 Estrategia de conversación:
+- Solicita detalles clave cuando falten (cultivo, etapa, ubicación, objetivos de producción).
+- Formula preguntas de seguimiento que ayuden al usuario a profundizar o validar la recomendación.
+- Propón verificaciones manuales cuando detectes incertidumbre en los sensores o inconsistencias.
+- Señala el momento de la última lectura disponible y la confianza en los datos.
+
+## 🧭 Flujo sugerido:
+1. Resume el contexto y los datos disponibles (incluye timestamp y robot si aplica).
+2. Interpreta métricas y detecta riesgos u oportunidades.
+3. Recomienda acciones priorizadas y explica el porqué.
+4. Sugiere próximos pasos y plantea una pregunta de seguimiento para continuar el análisis.
 
 ## 🌱 ÁREAS DE EXPERTISE:
 1. **Análisis de Condiciones Ambientales**: Interpretación de datos de sensores
@@ -204,8 +234,9 @@ export async function chatWithAI(messages: any[], currentSensorData: any) {
 - **Alertas**: Riesgos o problemas identificados
 - **Contexto**: Información adicional relevante
 - **Próximos Pasos**: Plan de acción sugerido
+- **Preguntas de Seguimiento**: Al menos una pregunta para obtener contexto adicional o confirmar hallazgos
 
-Responde siempre en español y mantén el foco en la agricultura. Si el usuario pregunta algo no relacionado, redirige educadamente hacia temas agrícolas.`;
+Responde siempre en español y mantén el foco en la agricultura. Si el usuario pregunta algo no relacionado, redirige educadamente hacia temas agrícolas. Si piden la ubicación y hay coordenadas disponibles, comparte la latitud y longitud y sugiere corroborarlas en el dashboard. Si no hay un robot seleccionado o los datos son antiguos o simulados, indícalo explícitamente y recomienda seleccionar o sincronizar un robot específico.`;
 
 
     const result = await generateText({
@@ -222,8 +253,54 @@ Responde siempre en español y mantén el foco en la agricultura. Si el usuario 
 
 function generateIntelligentResponse(messages: any[], currentSensorData: any) {
   
+  if (!currentSensorData) {
+    return "⚠️ **Datos no disponibles**\n\nNo tengo lecturas de sensores asociadas a un robot específico en este momento. Selecciona un robot desde el panel o vincula uno nuevo para que pueda analizar sus datos y responder con precisión.";
+  }
+
   const lastMessage = messages[messages.length - 1];
-  const userMessage = lastMessage?.content?.toLowerCase() || "";
+  const rawUserMessage = lastMessage?.content || "";
+  const userMessage = rawUserMessage.toLowerCase();
+  const normalizedMessage =
+    rawUserMessage
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") || "";
+
+  const hasLat =
+    typeof currentSensorData?.location?.latitud === "number" &&
+    Number.isFinite(currentSensorData.location.latitud);
+  const hasLng =
+    typeof currentSensorData?.location?.longitud === "number" &&
+    Number.isFinite(currentSensorData.location.longitud);
+  const locationData = hasLat && hasLng
+    ? {
+        lat: currentSensorData.location.latitud,
+        lng: currentSensorData.location.longitud,
+      }
+    : null;
+  const asksForLocation =
+    normalizedMessage.includes("ubicacion") ||
+    normalizedMessage.includes("ubicado") ||
+    normalizedMessage.includes("ubicarse") ||
+    normalizedMessage.includes("donde esta") ||
+    normalizedMessage.includes("donde se encuentra") ||
+    normalizedMessage.includes("posicion del robot");
+
+  const dataTimestamp = currentSensorData?.timestamp
+    ? new Date(currentSensorData.timestamp).toLocaleString("es-ES")
+    : null;
+
+  if (asksForLocation) {
+    if (locationData) {
+      return `📍 **Ubicación Aproximada del Robot**\n\nEl robot reporta coordenadas cercanas a **latitud ${locationData.lat.toFixed(
+        5
+      )}°, longitud ${locationData.lng.toFixed(
+        5
+      )}°**.\n\nRevisa el mapa del dashboard para confirmar la posición exacta y obtener más contexto del entorno. ¿Deseas que analice las condiciones actuales en esa zona?`;
+    }
+
+    return "📍 **Ubicación no disponible**\n\nAún no recibo coordenadas válidas del robot seleccionado. Verifica que el robot esté transmitiendo datos y vuelve a intentarlo o consulta el panel de dispositivos para confirmar la última ubicación registrada.";
+  }
   
   const sensorSummary = {
     temperatura_celsius: parseFloat(currentSensorData?.temperature?.temperatura_celsius || "0"),
@@ -241,6 +318,16 @@ function generateIntelligentResponse(messages: any[], currentSensorData: any) {
   let recommendations = "";
   let alerts = "";
   let nextSteps = "";
+
+  if (dataTimestamp) {
+    analysis += `🕒 **Última lectura registrada**: ${dataTimestamp}.\n`;
+  }
+
+  if (locationData) {
+    analysis += `📍 **Ubicación Aproximada**: Latitud ${locationData.lat.toFixed(
+      5
+    )}°, longitud ${locationData.lng.toFixed(5)}°.\n`;
+  }
 
   // Análisis de temperatura ambiente
   if (sensorSummary.temperatura_celsius > 35) {
@@ -364,6 +451,44 @@ function generateIntelligentResponse(messages: any[], currentSensorData: any) {
     contextualResponse = "## 📊 Análisis de Condiciones Agrícolas\n\nBasándome en los datos de tus sensores, aquí tienes mi análisis:\n\n";
   }
 
+  const followUps: string[] = [];
+  const addFollowUp = (item: string) => {
+    if (!followUps.includes(item)) {
+      followUps.push(item);
+    }
+  };
+
+  if (!currentSensorData?.soil || currentSensorData?.soil?.humedad_suelo == null) {
+    addFollowUp(
+      "¿Puedes compartir observaciones recientes sobre la humedad del suelo o la textura del sustrato?"
+    );
+  }
+
+  if (!currentSensorData?.light || currentSensorData?.light?.lux == null) {
+    addFollowUp(
+      "Confírmame si el cultivo recibe sombra parcial o si has notado cambios de luminosidad durante el día."
+    );
+  }
+
+  if (!normalizedMessage.includes("cultivo") && !normalizedMessage.includes("variedad")) {
+    addFollowUp(
+      "Indícame el cultivo, variedad y etapa fenológica para ajustar mejor las recomendaciones."
+    );
+  }
+
+  if (!normalizedMessage.includes("riego") && !normalizedMessage.includes("fert")) {
+    addFollowUp(
+      "¿Tienes un calendario de riego o fertilización que debamos considerar?"
+    );
+  }
+
+  const followUpSection =
+    "### 🤔 Preguntas de Seguimiento\n\n" +
+    (followUps.length
+      ? followUps.map((item) => `- ${item}`).join("\n")
+      : "- ¿Deseas profundizar en algún cultivo, parcela o riesgo específico?") +
+    "\n";
+
   const response = contextualResponse + 
     "### 📈 Estado Actual de los Sensores\n\n" +
     analysis + "\n" +
@@ -373,7 +498,10 @@ function generateIntelligentResponse(messages: any[], currentSensorData: any) {
     (alerts || "✅ **Estado Normal**: No hay alertas críticas en este momento.\n") +
     "\n" +
     "### 📋 Próximos Pasos\n\n" +
-    (nextSteps || "📊 **Monitoreo Continuo**: Mantén el seguimiento de los sensores cada 4-6 horas.\n") +
+    (nextSteps ||
+      "📊 **Monitoreo Continuo**: Mantén el seguimiento de los sensores cada 4-6 horas y registra observaciones de campo.\n") +
+    "\n" +
+    followUpSection +
     "\n---\n" +
     "🤖 **AgroTico AI** - Asistente de Agricultura de Precisión\n" +
     "💡 *Nota: Esta es una respuesta simulada basada en tus datos de sensores. Para análisis más avanzados, configura una API key válida de DeepSeek.*";

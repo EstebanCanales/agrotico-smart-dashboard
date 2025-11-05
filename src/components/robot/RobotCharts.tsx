@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   LineChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -20,7 +20,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   Thermometer,
   Droplets,
@@ -32,15 +31,21 @@ import {
   Activity,
   Settings,
   Database,
-  Download,
-  Filter,
   Maximize2,
   Minimize2,
   RotateCcw,
   Calendar,
   Clock,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { SensorData } from "@/actions/sensors";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 
 interface HistoricalDataPoint {
   timestamp: string;
@@ -59,6 +64,46 @@ interface RobotChartsProps {
   historicalData: HistoricalDataPoint[];
   onGenerateRecord?: () => void;
 }
+
+type EmptyStateReason =
+  | "no-data"
+  | "no-match"
+  | "missing-custom"
+  | "invalid-range";
+
+const parseTimestamp = (value: unknown) => {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === "number") {
+    const fromNumber = new Date(value);
+    return Number.isNaN(fromNumber.getTime()) ? null : fromNumber;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.includes("T") ? value : value.replace(" ", "T");
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return null;
+};
+
+const toInputLocalValue = (raw: unknown) => {
+  const date = parseTimestamp(raw);
+  if (!date) return "";
+
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  const hours = `${date.getHours()}`.padStart(2, "0");
+  const minutes = `${date.getMinutes()}`.padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
 
 const COLORS = [
   "#3B82F6", // Blue
@@ -79,25 +124,86 @@ export default function RobotCharts({
   const [dataLimit, setDataLimit] = useState<"20" | "50" | "100" | "200">("20");
   const [chartType, setChartType] = useState<"line" | "bar" | "area">("line");
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(false);
   const [timeRange, setTimeRange] = useState<
     "1h" | "6h" | "24h" | "7d" | "30d" | "custom"
   >("24h");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
 
-  // Filtrar datos según el rango de tiempo y cantidad de registros
-  const getFilteredData = useMemo(() => {
-    if (!historicalData.length) {
-      return [];
+  useEffect(() => {
+    if (timeRange !== "custom" || historicalData.length === 0) {
+      return;
     }
 
-    let filteredData = [...historicalData];
-    const now = new Date();
+    if (!customStartDate) {
+      const first = toInputLocalValue(historicalData[0].timestamp);
+      if (first) {
+        setCustomStartDate(first);
+      }
+    }
 
-    // Filtrar por rango de tiempo
-    if (timeRange !== "custom") {
-      let startTime: Date;
+    if (!customEndDate) {
+      const last = toInputLocalValue(
+        historicalData[historicalData.length - 1].timestamp
+      );
+      if (last) {
+        setCustomEndDate(last);
+      }
+    }
+  }, [timeRange, historicalData, customStartDate, customEndDate]);
+
+  // Filtrar datos según el rango de tiempo y cantidad de registros
+  const filteredResult = useMemo(() => {
+    if (!historicalData || historicalData.length === 0) {
+      return {
+        data: [] as HistoricalDataPoint[],
+        matchedCount: 0,
+        totalCount: 0,
+        reason: "no-data" as EmptyStateReason,
+      };
+    }
+
+    let filtered = [...historicalData];
+
+    if (timeRange === "custom") {
+      const firstPoint = parseTimestamp(historicalData[0].timestamp);
+      const lastPoint = parseTimestamp(
+        historicalData[historicalData.length - 1].timestamp
+      );
+
+      const startDate = customStartDate
+        ? parseTimestamp(customStartDate)
+        : firstPoint;
+      const endDate = customEndDate ? parseTimestamp(customEndDate) : lastPoint;
+
+      if (!startDate || !endDate) {
+        return {
+          data: [],
+          matchedCount: 0,
+          totalCount: historicalData.length,
+          reason: "missing-custom" as EmptyStateReason,
+        };
+      }
+
+      if (startDate > endDate) {
+        return {
+          data: [],
+          matchedCount: 0,
+          totalCount: historicalData.length,
+          reason: "invalid-range" as EmptyStateReason,
+        };
+      }
+
+      const inclusiveEnd = new Date(endDate.getTime() + 59 * 1000 + 999);
+
+      filtered = filtered.filter((point) => {
+        const pointDate = parseTimestamp(point.timestamp);
+        if (!pointDate) return false;
+        return pointDate >= startDate && pointDate <= inclusiveEnd;
+      });
+    } else {
+      const now = new Date();
+      let startTime = new Date(now);
 
       switch (timeRange) {
         case "1h":
@@ -119,41 +225,45 @@ export default function RobotCharts({
           startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       }
 
-      const beforeFilter = filteredData.length;
-      filteredData = filteredData.filter(
-        (point) => new Date(point.timestamp) >= startTime
-      );
-
-      // Si no hay datos después del filtro de tiempo, mostrar todos los datos disponibles
-      if (filteredData.length === 0) {
-        filteredData = [...historicalData];
-      }
-    } else if (customStartDate && customEndDate) {
-      // Filtro personalizado por fechas
-      const startDate = new Date(customStartDate);
-      const endDate = new Date(customEndDate);
-
-      const beforeFilter = filteredData.length;
-      filteredData = filteredData.filter((point) => {
-        const pointDate = new Date(point.timestamp);
-        return pointDate >= startDate && pointDate <= endDate;
+      filtered = filtered.filter((point) => {
+        const pointDate = parseTimestamp(point.timestamp);
+        if (!pointDate) return false;
+        return pointDate >= startTime;
       });
-
-      // Si no hay datos después del filtro personalizado, mostrar todos los datos disponibles
-      if (filteredData.length === 0) {
-        filteredData = [...historicalData];
-      }
     }
 
-    // Aplicar límite de registros
-    const limit = parseInt(dataLimit);
-    const finalData = filteredData.slice(-limit);
-    return finalData;
-  }, [historicalData, dataLimit, timeRange, customStartDate, customEndDate]);
+    const matchedCount = filtered.length;
+
+    if (matchedCount === 0) {
+      return {
+        data: [] as HistoricalDataPoint[],
+        matchedCount: 0,
+        totalCount: historicalData.length,
+        reason: "no-match" as EmptyStateReason,
+      };
+    }
+
+    const limit = Number.parseInt(dataLimit, 10);
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 20;
+    const limited = filtered.slice(-safeLimit);
+
+    return {
+      data: limited,
+      matchedCount,
+      totalCount: historicalData.length,
+      reason: null as EmptyStateReason | null,
+    };
+  }, [historicalData, timeRange, customStartDate, customEndDate, dataLimit]);
+
+  const {
+    data: limitedData,
+    matchedCount,
+    reason: emptyStateReason,
+  } = filteredResult;
 
   // Preparar datos para gráficos
   const chartData = useMemo(() => {
-    return getFilteredData.map((point, index) => {
+    return limitedData.map((point) => {
       const pointDate = new Date(point.timestamp);
 
       // Mostrar fecha y hora para rangos largos, solo hora para rangos cortos
@@ -187,7 +297,7 @@ export default function RobotCharts({
         temperatura_suelo: point.temperatura_suelo_celsius,
       };
     });
-  }, [getFilteredData, historicalData, timeRange]);
+  }, [limitedData, timeRange]);
 
   // Configuración de gráficos individuales
   const individualMetrics = [
@@ -199,6 +309,8 @@ export default function RobotCharts({
       iconColor: "text-red-600",
       chartColor: "#EF4444",
       unit: "°C",
+      description:
+        "Temperatura ambiente registrada por los sensores del robot (grados Celsius).",
       min: 0,
       max: 40,
     },
@@ -210,6 +322,8 @@ export default function RobotCharts({
       iconColor: "text-purple-600",
       chartColor: "#8B5CF6",
       unit: "hPa",
+      description:
+        "Presión atmosférica medida a la altura del cultivo (hectopascales).",
       min: 0,
       max: 1000,
     },
@@ -221,6 +335,8 @@ export default function RobotCharts({
       iconColor: "text-blue-600",
       chartColor: "#3B82F6",
       unit: "%",
+      description:
+        "Humedad relativa del aire detectada por el robot (porcentaje).",
       min: 0,
       max: 100,
     },
@@ -232,6 +348,8 @@ export default function RobotCharts({
       iconColor: "text-gray-600",
       chartColor: "#6B7280",
       unit: "ppm",
+      description:
+        "Concentración de dióxido de carbono en la zona del cultivo (partes por millón).",
       min: 0,
       max: 400,
     },
@@ -243,6 +361,8 @@ export default function RobotCharts({
       iconColor: "text-yellow-600",
       chartColor: "#F59E0B",
       unit: "lux",
+      description:
+        "Nivel de iluminación ambiental registrado por el sensor de luz (lux).",
       min: 0,
       max: 1000,
     },
@@ -254,6 +374,8 @@ export default function RobotCharts({
       iconColor: "text-orange-600",
       chartColor: "#F97316",
       unit: "UV",
+      description:
+        "Índice ultravioleta estimado en la superficie del cultivo (valor UV).",
       min: 0,
       max: 3,
     },
@@ -265,6 +387,8 @@ export default function RobotCharts({
       iconColor: "text-green-600",
       chartColor: "#10B981",
       unit: "adc",
+      description:
+        "Lectura de humedad del suelo a nivel radicular (valor analógico del sensor).",
       min: 200,
       max: 600,
     },
@@ -276,67 +400,105 @@ export default function RobotCharts({
       iconColor: "text-amber-600",
       chartColor: "#F59E0B",
       unit: "°C",
+      description:
+        "Temperatura del suelo en la zona de raíces (grados Celsius).",
       min: 10,
       max: 40,
     },
   ];
 
-  const renderIndividualChart = (metric: any) => {
-    if (chartData.length === 0) {
+  const renderEmptyState = (reason: EmptyStateReason | null) => {
+    const resolvedReason: EmptyStateReason =
+      reason ?? (historicalData.length === 0 ? "no-data" : "no-match");
+
+    if (resolvedReason === "missing-custom") {
       return (
         <div className="flex items-center justify-center h-64 text-slate-500">
-          <div className="text-center">
-            <Database className="h-12 w-12 mx-auto mb-2 text-slate-400" />
+          <div className="text-center space-y-2">
+            <Calendar className="h-12 w-12 mx-auto mb-2 text-slate-400" />
             <p className="text-lg font-medium">
-              No hay datos históricos disponibles
+              Selecciona un rango de fechas
             </p>
-            <p className="text-sm mb-3">
-              {historicalData.length === 0
-                ? "No se encontraron registros históricos para este robot"
-                : `Se encontraron ${historicalData.length} registros, pero ninguno coincide con el filtro seleccionado`}
+            <p className="text-sm">
+              Define la fecha de inicio y de fin para aplicar el filtro
+              personalizado.
             </p>
-            <div className="space-y-2">
-              <p className="text-xs text-slate-400">💡 Intenta:</p>
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setTimeRange("24h")}
-                  className="text-xs"
-                >
-                  Cambiar a 24h
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setDataLimit("200")}
-                  className="text-xs"
-                >
-                  Más registros
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setTimeRange("custom")}
-                  className="text-xs"
-                >
-                  Rango personalizado
-                </Button>
-                {onGenerateRecord && (
-                  <Button
-                    size="sm"
-                    onClick={onGenerateRecord}
-                    className="text-xs bg-blue-600 hover:bg-blue-700 text-white"
-                    style={{ backgroundColor: "#0057a3" }}
-                  >
-                    Generar datos
-                  </Button>
-                )}
-              </div>
-            </div>
+            <p className="text-xs text-slate-400">
+              Ambos campos son obligatorios. Usa el selector de fechas sobre los
+              gráficos.
+            </p>
           </div>
         </div>
       );
+    }
+
+    if (resolvedReason === "invalid-range") {
+      return (
+        <div className="flex items-center justify-center h-64 text-slate-500">
+          <div className="text-center space-y-2">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-amber-500" />
+            <p className="text-lg font-medium">
+              Rango de fechas no válido
+            </p>
+            <p className="text-sm">
+              La fecha de inicio debe ser anterior a la fecha de fin. Ajusta el
+              rango e inténtalo de nuevo.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center justify-center h-64 text-slate-500">
+        <div className="text-center">
+          <Database className="h-12 w-12 mx-auto mb-2 text-slate-400" />
+          <p className="text-lg font-medium">
+            {resolvedReason === "no-data"
+              ? "Este robot aún no tiene lecturas históricas"
+              : "No hay lecturas para el filtro seleccionado"}
+          </p>
+          <p className="text-sm mb-3">
+            {resolvedReason === "no-data"
+              ? "Genera nuevos registros o sincroniza el robot para comenzar a visualizar métricas."
+              : "Prueba ampliando el rango de fechas o ajustando la cantidad de registros."}
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setTimeRange("24h")}
+              className="text-xs"
+            >
+              Usar últimas 24h
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDataLimit("200")}
+              className="text-xs"
+            >
+              Mostrar 200 datos
+            </Button>
+            {onGenerateRecord && (
+              <Button
+                size="sm"
+                onClick={onGenerateRecord}
+                className="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                style={{ backgroundColor: "#0057a3" }}
+              >
+                Generar datos
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderIndividualChart = (metric: any) => {
+    if (chartData.length === 0) {
+      return renderEmptyState(emptyStateReason);
     }
 
     const commonProps = {
@@ -486,7 +648,8 @@ export default function RobotCharts({
   };
 
   return (
-    <div
+    <TooltipProvider delayDuration={150}>
+      <div
       className={`space-y-6 ${
         isFullscreen ? "fixed inset-0 z-50 bg-white p-6 overflow-auto" : ""
       }`}
@@ -669,7 +832,9 @@ export default function RobotCharts({
             </Badge>
           </div>
           <div className="text-xs text-slate-500">
-            {getFilteredData.length} registros encontrados
+            {matchedCount === 0
+              ? "Sin registros para este filtro"
+              : `${limitedData.length} de ${matchedCount} registros mostrados`}
           </div>
         </div>
       </div>
@@ -684,11 +849,29 @@ export default function RobotCharts({
               className={`${metric.color} border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all duration-200 rounded-lg`}
             >
               <CardHeader className="pb-3 px-4 pt-4">
-                <CardTitle className="flex items-center space-x-2 text-sm font-medium">
-                  <div className="p-1.5 rounded-md bg-slate-100">
-                    <IconComponent className={`h-4 w-4 ${metric.iconColor}`} />
-                  </div>
-                  <span className="text-slate-700">{metric.label}</span>
+                <CardTitle className="text-sm font-medium text-slate-700">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 cursor-help">
+                        <div className="p-1.5 rounded-md bg-slate-100">
+                          <IconComponent
+                            className={`h-4 w-4 ${metric.iconColor}`}
+                          />
+                        </div>
+                        <span>{metric.label}</span>
+                        <Info className="h-3.5 w-3.5 text-slate-400" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs bg-slate-900 text-white">
+                      <p className="text-xs font-semibold">{metric.label}</p>
+                      <p className="text-xs mt-1 leading-relaxed">
+                        {metric.description}
+                      </p>
+                      <p className="text-[10px] mt-2 opacity-70 uppercase tracking-wide">
+                        Unidad: {metric.unit}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent className="h-full px-4 pb-4">
@@ -746,6 +929,7 @@ export default function RobotCharts({
 
       {/* Spacing adicional al final */}
       <div className="h-8"></div>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
