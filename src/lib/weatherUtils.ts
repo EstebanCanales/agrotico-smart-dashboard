@@ -3,6 +3,7 @@
  */
 
 // Optimal conditions for different crops
+// Optimal conditions for different crops
 export const CROP_OPTIMAL_CONDITIONS = {
   cafe: { temperature: 22, precipitation: 8 },
   maiz: { temperature: 24, precipitation: 10 },
@@ -11,8 +12,22 @@ export const CROP_OPTIMAL_CONDITIONS = {
   papa: { temperature: 18, precipitation: 7 },
   tomate: { temperature: 24, precipitation: 6 },
   cacao: { temperature: 25, precipitation: 14 },
+  caña: { temperature: 28, precipitation: 9 },
+  frijol: { temperature: 23, precipitation: 8 },
+  yuca: { temperature: 26, precipitation: 10 },
+  piña: { temperature: 27, precipitation: 11 },
+  mango: { temperature: 30, precipitation: 5 },
+  aguacate: { temperature: 24, precipitation: 9 },
+  cebolla: { temperature: 22, precipitation: 6 },
+  lechuga: { temperature: 18, precipitation: 5 },
+  zanahoria: { temperature: 19, precipitation: 6 },
+  sandía: { temperature: 29, precipitation: 8 },
+  melón: { temperature: 28, precipitation: 7 },
+  repollo: { temperature: 20, precipitation: 6 },
+  // fallback
   default: { temperature: 24, precipitation: 10 },
 } as const;
+
 
 // Impact calculation weights
 export const IMPACT_WEIGHTS = {

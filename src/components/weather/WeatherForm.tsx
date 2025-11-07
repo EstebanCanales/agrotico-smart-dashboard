@@ -39,6 +39,18 @@ export default function WeatherForm({
     { value: "papa", label: "Papa" },
     { value: "tomate", label: "Tomate" },
     { value: "cacao", label: "Cacao" },
+    { value: "caña", label: "Caña de Azúcar" },
+    { value: "frijol", label: "Frijol" },
+    { value: "yuca", label: "Yuca" },
+    { value: "piña", label: "Piña" },
+    { value: "mango", label: "Mango" },
+    { value: "aguacate", label: "Aguacate" },
+    { value: "cebolla", label: "Cebolla" },
+    { value: "lechuga", label: "Lechuga" },
+    { value: "zanahoria", label: "Zanahoria" },
+    { value: "sandía", label: "Sandía" },
+    { value: "melón", label: "Melón" },
+    { value: "repollo", label: "Repollo" },
   ];
 
   return (
@@ -96,15 +108,15 @@ export default function WeatherForm({
         {/* Date Selection */}
         <div className="space-y-2">
           <Label>Fecha de Inicio</Label>
-          <div className="border rounded-md p-3">
-            <Calendar
-              mode="single"
-              selected={startDate}
-              onSelect={setStartDate}
-              className="rounded-md"
-              disabled={(date) => date < new Date()}
-            />
-          </div>
+            <div className="border rounded-md p-3 flex sm:justify-start justify-center">
+              <Calendar
+                mode="single"
+                selected={startDate}
+                onSelect={setStartDate}
+                className="rounded-md"
+                disabled={(date) => date < new Date()}
+              />
+            </div>
         </div>
       </CardContent>
     </Card>
