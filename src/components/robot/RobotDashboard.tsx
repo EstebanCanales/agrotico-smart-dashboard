@@ -336,23 +336,23 @@ export default function RobotDashboard({
         className="group animate-fade-in-up transition-all duration-300"
       >
         <Card className="bg-white/90 backdrop-blur-sm border border-white/20 shadow-2xl rounded-2xl">
-          <CardHeader className="pb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-lg">
-                  <MapPin className="h-6 w-6 text-white" />
+          <CardHeader className="pb-3 sm:pb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="p-1.5 sm:p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-lg">
+                  <MapPin className="h-4 sm:h-6 w-4 sm:w-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <CardTitle className="text-xl bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                  <CardTitle className="text-base sm:text-xl bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                     Ubicación del Robot
                   </CardTitle>
-                  <p className="text-slate-600 text-sm">
+                  <p className="text-slate-600 text-xs sm:text-sm hidden sm:block">
                     Visualización en tiempo real de la posición del robot
                   </p>
                 </div>
               </div>
               {isDragMode && (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <div
                     {...attributes}
                     {...listeners}
@@ -377,7 +377,7 @@ export default function RobotDashboard({
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="h-[400px] rounded-xl overflow-hidden border border-white/30 shadow-inner bg-gradient-to-br from-blue-50 to-indigo-50">
+            <div className="h-64 sm:h-80 md:h-96 lg:h-[400px] rounded-xl overflow-hidden border border-white/30 shadow-inner bg-gradient-to-br from-blue-50 to-indigo-50">
               <RobotMap
                 lat={robotData?.latitud ? Number(robotData.latitud) : 9.890044}
                 lng={
@@ -416,15 +416,15 @@ export default function RobotDashboard({
         className="group animate-fade-in-up transition-all duration-300"
       >
         <Card className="bg-white/90 backdrop-blur-sm border border-white/20 shadow-2xl rounded-2xl">
-          <CardHeader className="pb-6">
-            <div className="flex items-center justify-between">
+          <CardHeader className="pb-3 sm:pb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center space-x-2">
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5" />
+                <CardTitle className="flex items-center space-x-2 text-base sm:text-lg">
+                  <TrendingUp className="h-4 sm:h-5 w-4 sm:w-5" />
                   <span>Análisis de Datos</span>
                 </CardTitle>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {isDragMode && (
                   <>
                     <div
@@ -471,9 +471,10 @@ export default function RobotDashboard({
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
                   }}
+                  className="text-xs sm:text-sm"
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Descargar
+                  <Download className="h-3 sm:h-4 w-3 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Descargar</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -490,14 +491,15 @@ export default function RobotDashboard({
                       alert("Enlace copiado al portapapeles");
                     }
                   }}
+                  className="text-xs sm:text-sm"
                 >
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Compartir
+                  <Share2 className="h-3 sm:h-4 w-3 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Compartir</span>
                 </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="h-auto w-full">
               <RobotCharts
                 sensorData={sensorData}
@@ -687,7 +689,7 @@ export default function RobotDashboard({
 
         {/* Widgets pequeños en grid */}
         {smallWidgets.length > 0 && (
-          <div className="grid grid-cols-4 gap-4 pb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pb-6 sm:pb-8">
             {smallWidgets.map((type) => (
               <SmallWidget key={type} type={type} id={type} />
             ))}
@@ -698,39 +700,41 @@ export default function RobotDashboard({
   }, [widgetOrder, isDragMode, sensorData, historicalData, robot]);
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header Simplificado */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="flex items-center space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Volver</span>
-            </Button>
+      <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+            <div className="flex items-center justify-between w-full sm:w-auto">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onBack}
+                className="flex items-center space-x-1 sm:space-x-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="text-sm">Volver</span>
+              </Button>
+            </div>
 
-            <div className="flex items-center space-x-6">
-              <h1 className="text-2xl font-bold text-slate-900 flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 w-full sm:w-auto">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center space-x-2">
                 <span>{robot.nombre}</span>
                 {refreshing && (
                   <div className="animate-spin">
-                    <RefreshCw className="h-5 w-5 text-blue-600" />
+                    <RefreshCw className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                   </div>
                 )}
               </h1>
-              <div className="flex items-center space-x-4 text-sm text-slate-600">
-                <div className="flex items-center space-x-2">
-                  <Database className="h-4 w-4 text-blue-600" />
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600">
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <Database className="h-3 sm:h-4 w-3 sm:w-4 text-blue-600" />
                   <span className="font-medium">
                     {robot.total_registros || 0} registros
                   </span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Activity className="h-4 w-4 text-green-600" />
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <Activity className="h-3 sm:h-4 w-3 sm:w-4 text-green-600" />
                   <span className="font-medium">
                     {robot.registros_hoy || 0} hoy
                   </span>
@@ -738,7 +742,7 @@ export default function RobotDashboard({
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -748,30 +752,30 @@ export default function RobotDashboard({
                   loadAdvancedStats();
                 }}
                 disabled={dataLoading}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
               >
                 <RefreshCw
-                  className={`h-4 w-4 ${dataLoading ? "animate-spin" : ""}`}
+                  className={`h-3 sm:h-4 w-3 sm:w-4 ${dataLoading ? "animate-spin" : ""}`}
                 />
-                <span>Actualizar</span>
+                <span className="hidden sm:inline">Actualizar</span>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowAddWidget(!showAddWidget)}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
               >
-                <Plus className="h-4 w-4" />
-                <span>Agregar</span>
+                <Plus className="h-3 sm:h-4 w-3 sm:w-4" />
+                <span className="hidden sm:inline">Agregar</span>
               </Button>
               <Button
                 variant={isDragMode ? "default" : "outline"}
                 size="sm"
                 onClick={() => setIsDragMode(!isDragMode)}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
               >
-                <GripVertical className="h-4 w-4" />
-                <span>{isDragMode ? "Salir" : "Reorganizar"}</span>
+                <GripVertical className="h-3 sm:h-4 w-3 sm:w-4" />
+                <span className="hidden sm:inline">{isDragMode ? "Salir" : "Reorganizar"}</span>
               </Button>
             </div>
           </div>
@@ -781,9 +785,9 @@ export default function RobotDashboard({
       {/* Widget Selector */}
       {showAddWidget && (
         <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-800">
+          <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-4">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-800">
                 Agregar Componente
               </h3>
               <Button
@@ -795,7 +799,7 @@ export default function RobotDashboard({
                 ✕
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {/* Widgets grandes */}
               <div
                 className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
@@ -978,9 +982,9 @@ export default function RobotDashboard({
       )}
 
       {/* Main Dashboard Content */}
-      <div className="h-full overflow-y-auto bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative">
         {/* Grid Background Animation */}
-        <div className="fixed inset-0 opacity-5 pointer-events-none z-0">
+        <div className="hidden md:block fixed inset-0 opacity-5 pointer-events-none z-0">
           <div
             className="absolute inset-0"
             style={{
@@ -994,7 +998,7 @@ export default function RobotDashboard({
           />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 py-6 pb-12 z-10">
+        <div className="relative max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6 pb-8 sm:pb-12 z-10">
           {isDragMode ? (
             <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 backdrop-blur-sm border border-blue-200 rounded-2xl shadow-xl animate-bounce-in">
               <div className="flex items-center space-x-3 text-blue-800">

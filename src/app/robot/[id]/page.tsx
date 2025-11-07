@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AlertTriangle } from "lucide-react";
@@ -42,24 +42,7 @@ export default function RobotPage() {
 
   const robotId = params?.id as string;
 
-  // Validar que el robotId existe
-  if (!robotId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            ID de Robot Inválido
-          </h2>
-          <p className="text-gray-600 mb-4">
-            No se proporcionó un ID de robot válido
-          </p>
-          <Button onClick={() => router.push("/")}>Volver al Dashboard</Button>
-        </div>
-      </div>
-    );
-  }
-
-  const loadRobotData = async (isInitialLoad = false) => {
+  const loadRobotData = useCallback(async (isInitialLoad = false) => {
     try {
       if (isInitialLoad) {
         setLoading(true);
@@ -128,13 +111,13 @@ export default function RobotPage() {
         setLoading(false);
       }
     }
-  };
+  }, [robotId]);
 
   useEffect(() => {
     if (robotId) {
       loadRobotData(true); // Carga inicial
     }
-  }, [robotId]);
+  }, [robotId, loadRobotData]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -173,6 +156,23 @@ export default function RobotPage() {
       setRefreshing(false);
     }
   };
+
+  // Validar que el robotId existe
+  if (!robotId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            ID de Robot Inválido
+          </h2>
+          <p className="text-gray-600 mb-4">
+            No se proporcionó un ID de robot válido
+          </p>
+          <Button onClick={() => router.push("/")}>Volver al Dashboard</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

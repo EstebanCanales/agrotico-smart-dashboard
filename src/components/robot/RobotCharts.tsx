@@ -116,6 +116,8 @@ const COLORS = [
   "#F97316", // Orange
 ];
 
+const CHART_HEIGHT = 250; // Responsive chart height in pixels
+
 export default function RobotCharts({
   sensorData,
   historicalData = [],
@@ -534,7 +536,7 @@ export default function RobotCharts({
     switch (chartType) {
       case "line":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <LineChart {...commonProps}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
@@ -572,7 +574,7 @@ export default function RobotCharts({
 
       case "bar":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <BarChart {...commonProps}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
@@ -607,7 +609,7 @@ export default function RobotCharts({
 
       case "area":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <AreaChart {...commonProps}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
@@ -650,18 +652,20 @@ export default function RobotCharts({
   return (
     <TooltipProvider delayDuration={150}>
       <div
-      className={`space-y-6 ${
-        isFullscreen ? "fixed inset-0 z-50 bg-white p-6 overflow-auto" : ""
+      className={`space-y-4 sm:space-y-6 ${
+        isFullscreen ? "fixed inset-0 z-50 bg-white p-4 sm:p-6 overflow-auto" : ""
       }`}
     >
       {/* Controles */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-white rounded-md border border-slate-200">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 sm:gap-4 p-2 sm:p-3 bg-white rounded-md border border-slate-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full lg:w-auto overflow-x-auto">
           {/* Rango de tiempo */}
-          <div className="flex items-center space-x-2">
-            <Clock className="h-4 w-4 text-slate-500" />
-            <span className="text-sm font-medium text-slate-600">Período:</span>
-            <div className="flex space-x-1">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-slate-500" />
+              <span className="text-xs sm:text-sm font-medium text-slate-600">Período:</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
               {[
                 { value: "1h", label: "1h" },
                 { value: "6h", label: "6h" },
@@ -688,13 +692,13 @@ export default function RobotCharts({
 
           {/* Fechas personalizadas */}
           {timeRange === "custom" && (
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
               <Calendar className="h-4 w-4 text-slate-500" />
               <input
                 type="datetime-local"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
-                className="h-7 px-2 text-xs border border-slate-300 rounded-md"
+                className="h-7 px-2 text-xs border border-slate-300 rounded-md w-full sm:w-auto"
                 placeholder="Fecha inicio"
               />
               <span className="text-xs text-slate-500">a</span>
@@ -702,19 +706,21 @@ export default function RobotCharts({
                 type="datetime-local"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
-                className="h-7 px-2 text-xs border border-slate-300 rounded-md"
+                className="h-7 px-2 text-xs border border-slate-300 rounded-md w-full sm:w-auto"
                 placeholder="Fecha fin"
               />
             </div>
           )}
 
           {/* Cantidad de registros */}
-          <div className="flex items-center space-x-2">
-            <Database className="h-4 w-4 text-slate-500" />
-            <span className="text-sm font-medium text-slate-600">
-              Registros:
-            </span>
-            <div className="flex space-x-1">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center space-x-2">
+              <Database className="h-4 w-4 text-slate-500" />
+              <span className="text-xs sm:text-sm font-medium text-slate-600">
+                Registros:
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1">
               {["20", "50", "100", "200"].map((limit) => (
                 <Button
                   key={limit}
@@ -733,13 +739,15 @@ export default function RobotCharts({
           </div>
         </div>
 
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Settings className="h-4 w-4 text-slate-500" />
-            <span className="text-sm font-medium text-slate-700">
-              Tipo de gráfico:
-            </span>
-            <div className="flex space-x-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full lg:w-auto">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center space-x-2">
+              <Settings className="h-4 w-4 text-slate-500" />
+              <span className="text-xs sm:text-sm font-medium text-slate-700">
+                Tipo de gráfico:
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1">
               {[
                 {
                   type: "line",
@@ -774,12 +782,12 @@ export default function RobotCharts({
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="h-8 px-3"
+              className="h-7 sm:h-8 px-2 sm:px-3"
             >
               {isFullscreen ? (
                 <Minimize2 className="h-3 w-3" />
@@ -791,7 +799,7 @@ export default function RobotCharts({
               variant="outline"
               size="sm"
               onClick={() => window.location.reload()}
-              className="h-8 px-3"
+              className="h-7 sm:h-8 px-2 sm:px-3"
             >
               <RotateCcw className="h-3 w-3" />
             </Button>
@@ -800,9 +808,9 @@ export default function RobotCharts({
       </div>
 
       {/* Información del rango seleccionado */}
-      <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+      <div className="bg-slate-50 rounded-lg p-2 sm:p-3 border border-slate-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Clock className="h-4 w-4 text-slate-600" />
             <span className="text-sm font-medium text-slate-700">
               Mostrando datos de:
@@ -840,7 +848,7 @@ export default function RobotCharts({
       </div>
 
       {/* Gráficos individuales por métrica */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         {individualMetrics.map((metric, index) => {
           const IconComponent = metric.icon;
           return (
@@ -848,8 +856,8 @@ export default function RobotCharts({
               key={index}
               className={`${metric.color} border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all duration-200 rounded-lg`}
             >
-              <CardHeader className="pb-3 px-4 pt-4">
-                <CardTitle className="text-sm font-medium text-slate-700">
+              <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 pt-3 sm:pt-4">
+                <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-2 cursor-help">
@@ -874,7 +882,7 @@ export default function RobotCharts({
                   </Tooltip>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="h-full px-4 pb-4">
+              <CardContent className="h-full px-3 sm:px-4 pb-3 sm:pb-4">
                 <div className="h-auto">{renderIndividualChart(metric)}</div>
               </CardContent>
             </Card>
@@ -886,12 +894,12 @@ export default function RobotCharts({
       {sensorData?.climate && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">
+            <CardTitle className="text-base sm:text-lg">
               Datos Climáticos Satelitales
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <div className="text-center p-3 bg-blue-50 rounded-lg">
                 <Thermometer className="h-5 w-5 text-blue-600 mx-auto mb-1" />
                 <p className="text-xs font-medium text-slate-600">Temp. 2m</p>

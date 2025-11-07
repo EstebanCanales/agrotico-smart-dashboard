@@ -263,33 +263,33 @@ const MapComponent = ({
       <div ref={mapRef} className="w-full h-full rounded-lg" />
 
       {/* Overlay con información del robot */}
-      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-white/20">
+      <div className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-white/90 backdrop-blur-sm rounded-lg p-2 sm:p-3 shadow-lg border border-white/20">
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-sm font-semibold text-slate-800">
+          <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-xs sm:text-sm font-semibold text-slate-800">
             {robotName}
           </span>
         </div>
-        <div className="text-xs text-slate-600 mt-1">
+        <div className="text-2xs sm:text-xs text-slate-600 mt-1">
           📍 {lat.toFixed(4)}, {lng.toFixed(4)}
         </div>
       </div>
 
       {/* Indicador de zoom */}
-      <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/20">
+      <div className="hidden sm:block absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/20">
         <div className="text-xs text-slate-600 font-medium">Zoom: 16x</div>
       </div>
 
       {/* Indicador de satélite */}
-      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/20">
+      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-white/90 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 shadow-lg border border-white/20">
         <div className="flex items-center space-x-1">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-          <span className="text-xs text-slate-600 font-medium">Satélite</span>
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-pulse"></div>
+          <span className="text-2xs sm:text-xs text-slate-600 font-medium">Satélite</span>
         </div>
       </div>
 
       {/* Indicador de dirección */}
-      <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-white/20">
+      <div className="hidden sm:block absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-white/20">
         <div className="text-center">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mb-1">
             <span className="text-white text-sm">🧭</span>
@@ -299,7 +299,7 @@ const MapComponent = ({
       </div>
 
       {/* Indicador de escala */}
-      <div className="absolute bottom-16 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/20">
+      <div className="hidden sm:block absolute bottom-16 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/20">
         <div className="flex items-center space-x-2">
           <div className="w-12 h-1 bg-gradient-to-r from-slate-400 to-slate-600 rounded"></div>
           <span className="text-xs text-slate-600 font-medium">100m</span>
@@ -307,7 +307,7 @@ const MapComponent = ({
       </div>
 
       {/* Efectos de partículas decorativas */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="hidden md:block absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-blue-400/30 rounded-full animate-ping"></div>
         <div
           className="absolute top-3/4 right-1/4 w-1 h-1 bg-indigo-400/40 rounded-full animate-ping"
