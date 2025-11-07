@@ -116,6 +116,8 @@ const COLORS = [
   "#F97316", // Orange
 ];
 
+const CHART_HEIGHT = 250; // Responsive chart height in pixels
+
 export default function RobotCharts({
   sensorData,
   historicalData = [],
@@ -534,7 +536,7 @@ export default function RobotCharts({
     switch (chartType) {
       case "line":
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <LineChart {...commonProps}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
@@ -572,7 +574,7 @@ export default function RobotCharts({
 
       case "bar":
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <BarChart {...commonProps}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
@@ -607,7 +609,7 @@ export default function RobotCharts({
 
       case "area":
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <AreaChart {...commonProps}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
