@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     
 
     // Construir query basado en si se especifica un robot
+    // First try to join by lectura_id, if not found, fallback to most recent by robot_uuid
     let query = `
       SELECT 
         l.robot_uuid,
@@ -25,31 +26,40 @@ export async function GET(request: NextRequest) {
         sl.indice_uv,
         ssu.humedad_suelo,
         ssu.temperatura_suelo_celsius,
-        cs.temperatura_2m,
-        cs.temperatura_maxima,
-        cs.temperatura_minima,
-        cs.rango_temperatura,
-        cs.temperatura_punto_rocio,
-        cs.temperatura_humeda,
-        cs.temperatura_superficie,
-        cs.precipitacion_corregida,
-        cs.humedad_relativa,
-        cs.humedad_especifica,
-        cs.velocidad_viento,
-        cs.velocidad_viento_max,
-        cs.velocidad_viento_min,
-        cs.radiacion_onda_larga,
-        cs.radiacion_onda_corta,
-        cs.radiacion_cielo_despejado,
-        cs.indice_claridad,
-        cs.evaporacion,
-        cs.presion_superficie
+        COALESCE(cs.temperatura_2m, csb.temperatura_2m) as temperatura_2m,
+        COALESCE(cs.temperatura_maxima, csb.temperatura_maxima) as temperatura_maxima,
+        COALESCE(cs.temperatura_minima, csb.temperatura_minima) as temperatura_minima,
+        COALESCE(cs.rango_temperatura, csb.rango_temperatura) as rango_temperatura,
+        COALESCE(cs.temperatura_punto_rocio, csb.temperatura_punto_rocio) as temperatura_punto_rocio,
+        COALESCE(cs.temperatura_humeda, csb.temperatura_humeda) as temperatura_humeda,
+        COALESCE(cs.temperatura_superficie, csb.temperatura_superficie) as temperatura_superficie,
+        COALESCE(cs.precipitacion_corregida, csb.precipitacion_corregida) as precipitacion_corregida,
+        COALESCE(cs.humedad_relativa, csb.humedad_relativa) as humedad_relativa,
+        COALESCE(cs.humedad_especifica, csb.humedad_especifica) as humedad_especifica,
+        COALESCE(cs.velocidad_viento, csb.velocidad_viento) as velocidad_viento,
+        COALESCE(cs.velocidad_viento_max, csb.velocidad_viento_max) as velocidad_viento_max,
+        COALESCE(cs.velocidad_viento_min, csb.velocidad_viento_min) as velocidad_viento_min,
+        COALESCE(cs.radiacion_onda_larga, csb.radiacion_onda_larga) as radiacion_onda_larga,
+        COALESCE(cs.radiacion_onda_corta, csb.radiacion_onda_corta) as radiacion_onda_corta,
+        COALESCE(cs.radiacion_cielo_despejado, csb.radiacion_cielo_despejado) as radiacion_cielo_despejado,
+        COALESCE(cs.indice_claridad, csb.indice_claridad) as indice_claridad,
+        COALESCE(cs.evaporacion, csb.evaporacion) as evaporacion,
+        COALESCE(cs.presion_superficie, csb.presion_superficie) as presion_superficie
       FROM lecturas l
       LEFT JOIN sensor_bmp390 sb ON l.id = sb.lectura_id
       LEFT JOIN sensor_scd30 ss ON l.id = ss.lectura_id
       LEFT JOIN sensor_ltr390 sl ON l.id = sl.lectura_id
       LEFT JOIN sensor_suelo ssu ON l.id = ssu.lectura_id
       LEFT JOIN clima_satelital cs ON l.id = cs.lectura_id
+      LEFT JOIN (
+        SELECT cs1.*
+        FROM clima_satelital cs1
+        INNER JOIN (
+          SELECT robot_uuid, MAX(timestamp) as max_timestamp
+          FROM clima_satelital
+          GROUP BY robot_uuid
+        ) cs2 ON cs1.robot_uuid = cs2.robot_uuid AND cs1.timestamp = cs2.max_timestamp
+      ) csb ON l.robot_uuid = csb.robot_uuid AND cs.lectura_id IS NULL
       WHERE l.timestamp = (
         SELECT MAX(timestamp) 
         FROM lecturas l2 
