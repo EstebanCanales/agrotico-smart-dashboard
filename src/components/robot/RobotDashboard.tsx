@@ -336,23 +336,23 @@ export default function RobotDashboard({
         className="group animate-fade-in-up transition-all duration-300"
       >
         <Card className="bg-white/90 backdrop-blur-sm border border-white/20 shadow-2xl rounded-2xl">
-          <CardHeader className="pb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-lg">
-                  <MapPin className="h-6 w-6 text-white" />
+          <CardHeader className="pb-3 sm:pb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="p-1.5 sm:p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-lg">
+                  <MapPin className="h-4 sm:h-6 w-4 sm:w-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <CardTitle className="text-xl bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                  <CardTitle className="text-base sm:text-xl bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                     Ubicación del Robot
                   </CardTitle>
-                  <p className="text-slate-600 text-sm">
+                  <p className="text-slate-600 text-xs sm:text-sm hidden sm:block">
                     Visualización en tiempo real de la posición del robot
                   </p>
                 </div>
               </div>
               {isDragMode && (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <div
                     {...attributes}
                     {...listeners}
@@ -416,15 +416,15 @@ export default function RobotDashboard({
         className="group animate-fade-in-up transition-all duration-300"
       >
         <Card className="bg-white/90 backdrop-blur-sm border border-white/20 shadow-2xl rounded-2xl">
-          <CardHeader className="pb-6">
-            <div className="flex items-center justify-between">
+          <CardHeader className="pb-3 sm:pb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center space-x-2">
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5" />
+                <CardTitle className="flex items-center space-x-2 text-base sm:text-lg">
+                  <TrendingUp className="h-4 sm:h-5 w-4 sm:w-5" />
                   <span>Análisis de Datos</span>
                 </CardTitle>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {isDragMode && (
                   <>
                     <div
@@ -471,9 +471,10 @@ export default function RobotDashboard({
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
                   }}
+                  className="text-xs sm:text-sm"
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Descargar
+                  <Download className="h-3 sm:h-4 w-3 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Descargar</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -490,14 +491,15 @@ export default function RobotDashboard({
                       alert("Enlace copiado al portapapeles");
                     }
                   }}
+                  className="text-xs sm:text-sm"
                 >
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Compartir
+                  <Share2 className="h-3 sm:h-4 w-3 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Compartir</span>
                 </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="h-auto w-full">
               <RobotCharts
                 sensorData={sensorData}
