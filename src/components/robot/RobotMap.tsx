@@ -270,7 +270,7 @@ const MapComponent = ({
             {robotName}
           </span>
         </div>
-        <div className="text-[10px] sm:text-xs text-slate-600 mt-1">
+        <div className="text-2xs sm:text-xs text-slate-600 mt-1">
           📍 {lat.toFixed(4)}, {lng.toFixed(4)}
         </div>
       </div>
@@ -284,7 +284,7 @@ const MapComponent = ({
       <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-white/90 backdrop-blur-sm rounded-lg p-1.5 sm:p-2 shadow-lg border border-white/20">
         <div className="flex items-center space-x-1">
           <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-pulse"></div>
-          <span className="text-[10px] sm:text-xs text-slate-600 font-medium">Satélite</span>
+          <span className="text-2xs sm:text-xs text-slate-600 font-medium">Satélite</span>
         </div>
       </div>
 
