@@ -833,11 +833,15 @@ export default function RobotCharts({
               {timeRange === "custom"
                 ? `${
                     customStartDate
-                      ? new Date(customStartDate).toLocaleDateString("es-ES")
+                      ? new Date(customStartDate).toLocaleDateString("es-ES", {
+                          timeZone: "America/Costa_Rica",
+                        })
                       : "Inicio"
                   } - ${
                     customEndDate
-                      ? new Date(customEndDate).toLocaleDateString("es-ES")
+                      ? new Date(customEndDate).toLocaleDateString("es-ES", {
+                          timeZone: "America/Costa_Rica",
+                        })
                       : "Fin"
                   }`
                 : timeRange === "1h"
